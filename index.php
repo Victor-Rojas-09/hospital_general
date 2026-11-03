@@ -67,7 +67,6 @@ if (is_post()) {
                     <label>Contraseña<input type="password" name="password" autocomplete="current-password" required></label>
                     <button class="button primary full" type="submit">Ingresar</button>
                 </form>
-                <div class="login-help"><strong>Acceso inicial:</strong> admin / Hospital123!</div>
             </div>
         </section>
     </main>

@@ -10,8 +10,8 @@ $navigation = [
     ['page' => 'catalogos', 'label' => 'Médicos y diagnósticos', 'icon' => '✚', 'roles' => ['administrador']],
     ['page' => 'atencion', 'label' => 'Atención médica', 'icon' => '⚕', 'roles' => ['administrador', 'medico']],
     ['page' => 'reportes', 'label' => 'Reportes', 'icon' => '▥', 'roles' => ['administrador', 'recepcion', 'medico']],
-    ['page' => 'historico', 'label' => 'Archivo histórico', 'icon' => '▣', 'roles' => ['administrador', 'recepcion', 'medico']],
-    ['page' => 'usuarios', 'label' => 'Usuarios', 'icon' => '⚙', 'roles' => ['administrador']],
+    ['page' => 'historico', 'label' => 'Archivo histórico', 'icon' => '🗎', 'roles' => ['administrador', 'recepcion', 'medico']],
+    ['page' => 'usuarios', 'label' => 'Usuarios', 'icon' => '🅤', 'roles' => ['administrador']],
 ];
 ?>
 <!DOCTYPE html>
