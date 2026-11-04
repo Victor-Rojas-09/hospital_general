@@ -1,5 +1,3 @@
--- Hospital General - esquema relacional
--- Compatible con MySQL 8.x y MariaDB 10.4+ (InnoDB).
 CREATE DATABASE IF NOT EXISTS hospital_general
     CHARACTER SET utf8mb4
     COLLATE utf8mb4_unicode_ci;
@@ -42,7 +40,6 @@ CREATE TABLE IF NOT EXISTS plantas (
     CONSTRAINT chk_capacidad_positiva CHECK (capacidad_camas > 0)
 ) ENGINE=InnoDB;
 
--- La clave compuesta permite que exista, por ejemplo, la cama 12 en las plantas 3 y 7.
 CREATE TABLE IF NOT EXISTS camas (
     numero_planta INT UNSIGNED NOT NULL,
     numero_cama SMALLINT UNSIGNED NOT NULL,
@@ -65,8 +62,6 @@ CREATE TABLE IF NOT EXISTS diagnosticos (
     descripcion_cifrada TEXT NOT NULL
 ) ENGINE=InnoDB;
 
--- Relación N:M: un médico puede tratar varios diagnósticos y un diagnóstico
--- puede ser tratado por varios médicos.
 CREATE TABLE IF NOT EXISTS medicos_diagnosticos (
     codigo_medico VARCHAR(20) NOT NULL,
     codigo_diagnostico VARCHAR(20) NOT NULL,
@@ -77,8 +72,6 @@ CREATE TABLE IF NOT EXISTS medicos_diagnosticos (
         ON UPDATE CASCADE ON DELETE RESTRICT
 ) ENGINE=InnoDB;
 
--- ingresos contiene solamente estancias operativas/abiertas.
--- UNIQUE(id_paciente) impide dos ingresos abiertos simultáneos del mismo paciente.
 CREATE TABLE IF NOT EXISTS ingresos (
     id_ingreso BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     id_paciente BIGINT UNSIGNED NOT NULL,
@@ -90,7 +83,6 @@ CREATE TABLE IF NOT EXISTS ingresos (
     INDEX idx_ingresos_fecha (fecha_ingreso)
 ) ENGINE=InnoDB;
 
--- Historial de asignaciones. fecha_fin NULL significa que la asignación está vigente.
 CREATE TABLE IF NOT EXISTS asignaciones_cama (
     id_asignacion BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     id_ingreso BIGINT UNSIGNED NOT NULL,
@@ -108,10 +100,6 @@ CREATE TABLE IF NOT EXISTS asignaciones_cama (
     CONSTRAINT chk_fechas_asignacion CHECK (fecha_fin IS NULL OR fecha_fin >= fecha_inicio)
 ) ENGINE=InnoDB;
 
--- Esta tabla representa únicamente la ocupación ACTUAL.
--- Su PK impide ocupar dos veces una cama y UNIQUE(id_ingreso) impide asignar
--- dos camas simultáneas al mismo ingreso. La FK compuesta obliga a que la
--- ocupación corresponda a una asignación existente y coincidente.
 CREATE TABLE IF NOT EXISTS ocupaciones_cama (
     numero_planta INT UNSIGNED NOT NULL,
     numero_cama SMALLINT UNSIGNED NOT NULL,
@@ -175,8 +163,6 @@ CREATE TABLE IF NOT EXISTS diagnosticos_paciente (
     INDEX idx_dp_ingreso (id_ingreso)
 ) ENGINE=InnoDB;
 
--- Archivo histórico. Se conservan instantáneas de datos relevantes para que
--- el historial no dependa de cambios futuros en los catálogos.
 CREATE TABLE IF NOT EXISTS historico_ingresos (
     id_ingreso BIGINT UNSIGNED PRIMARY KEY,
     id_paciente BIGINT UNSIGNED NOT NULL,
@@ -241,15 +227,3 @@ CREATE TABLE IF NOT EXISTS historico_diagnosticos_paciente (
         ON UPDATE CASCADE ON DELETE RESTRICT,
     INDEX idx_hist_dp_fecha (fecha_diagnostico)
 ) ENGINE=InnoDB;
-
--- Datos iniciales: roles y cuenta administrativa de demostración.
-INSERT IGNORE INTO roles (id_rol, nombre) VALUES
-    (1, 'administrador'),
-    (2, 'recepcion'),
-    (3, 'medico');
-
--- Usuario: admin | Contraseña inicial: Hospital123!
--- Cambia la contraseña después de ingresar y reemplaza la clave de cifrado local.
-INSERT IGNORE INTO usuarios (id_rol, usuario, nombre, password_hash, activo)
-VALUES (1, 'admin', 'Administrador del sistema',
-        '$2y$12$F46xA4tRl.f8tzZdbxUEgOYyMGSBSBe7GQXGlpsjxihBJUWeowX4S', 1);

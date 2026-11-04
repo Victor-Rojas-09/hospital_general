@@ -1,6 +1,5 @@
 USE hospital_general;
 
--- 1. Ocupación por planta: camas registradas, ocupadas y disponibles.
 SELECT p.numero_planta,
        p.nombre,
        COUNT(c.numero_cama) AS total_camas,
@@ -15,7 +14,6 @@ LEFT JOIN ocupaciones_cama o
 GROUP BY p.numero_planta, p.nombre
 ORDER BY p.numero_planta;
 
--- 2. Prevalencia por período. La aplicación descifra la descripción en PHP.
 SELECT x.codigo_diagnostico,
        COUNT(*) AS total_casos
 FROM (
@@ -29,7 +27,6 @@ WHERE x.fecha_diagnostico BETWEEN '2026-01-01' AND '2026-12-31'
 GROUP BY x.codigo_diagnostico
 ORDER BY total_casos DESC;
 
--- 3. Recorrido de un paciente (reemplazar 1 por el id_paciente deseado).
 SELECT x.numero_planta,
        x.nombre_planta,
        x.numero_cama,
@@ -50,8 +47,6 @@ FROM (
 WHERE x.id_paciente = 1
 ORDER BY x.fecha_inicio;
 
--- 4. Prevalencia por especialidad (incluye ingresos actuales e históricos).
--- Cambiar 'Medicina interna' por la especialidad que se desea consultar.
 SELECT x.codigo_diagnostico,
        x.especialidad,
        COUNT(*) AS total_casos
