@@ -141,14 +141,32 @@ if (is_post()) {
 
         if ($action === 'discharge') {
             $admissionId = (int) post_value('id_ingreso');
+
             if ($admissionId < 1) {
                 throw new RuntimeException('Ingreso no válido.');
             }
+
+            $pdo->beginTransaction();
+
+            // Disabled visit cards
+            $updateCards = $pdo->prepare(
+                'UPDATE tarjetas_visita SET activa = 0 WHERE id_ingreso = ?'
+            );
+            $updateCards->execute([$admissionId]);
+
+            // Post Receipt
             $archive = $pdo->prepare('CALL sp_archivar_ingreso(?)');
             $archive->execute([$admissionId]);
+
             while ($archive->nextRowset()) {
-                // Clear additional result sets returned by the stored procedure.
+                // Clean Results
             }
+            $archive->closeCursor();
+
+            if ($pdo->inTransaction()) {
+                $pdo->commit();
+            }
+
             flash('success', 'Alta registrada. El ingreso y sus detalles fueron trasladados al archivo histórico.');
             go('dashboard.php?page=ingresos');
         }

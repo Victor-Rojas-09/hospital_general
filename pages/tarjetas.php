@@ -33,8 +33,8 @@ if (is_post()) {
             $slot = $freeSlots[0];
 
             $insert = $pdo->prepare(
-                'INSERT INTO tarjetas_visita (id_ingreso, numero_tarjeta, hora_inicio, hora_fin)
-                 VALUES (?, ?, ?, ?)'
+                'INSERT INTO tarjetas_visita (id_ingreso, numero_tarjeta, hora_inicio, hora_fin, activa)
+                 VALUES (?, ?, ?, ?, 1)'
             );
             $insert->execute([$admissionId, $slot, $start, $end]);
             $pdo->commit();

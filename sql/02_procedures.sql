@@ -27,7 +27,7 @@ BEGIN
 
     SET v_fecha_alta = CURRENT_TIMESTAMP;
 
-    -- Cerrar la asignación vigente y liberar la cama antes del archivo.
+    -- Cerrar la asignación vigente y liberar la cama antes del archivo
     UPDATE asignaciones_cama
        SET fecha_fin = v_fecha_alta
      WHERE id_ingreso = p_id_ingreso
@@ -35,7 +35,7 @@ BEGIN
 
     DELETE FROM ocupaciones_cama WHERE id_ingreso = p_id_ingreso;
 
-    -- Copiar la información principal y los datos personales como estaban al alta.
+    -- Copiar la información de las tablas originales
     INSERT INTO historico_ingresos (
         id_ingreso, id_paciente, fecha_ingreso, fecha_alta, archivado_en,
         paciente_nombre, paciente_apellidos, nss_cifrado, dni_cifrado, fecha_nacimiento
@@ -82,7 +82,7 @@ BEGIN
       JOIN diagnosticos d ON d.codigo_diagnostico = dp.codigo_diagnostico
      WHERE dp.id_ingreso = p_id_ingreso;
 
-    -- Retirar las filas operativas únicamente después de copiar todo al histórico.
+    -- Retirar las filas operativas
     DELETE FROM diagnosticos_paciente WHERE id_ingreso = p_id_ingreso;
     DELETE FROM tarjetas_visita WHERE id_ingreso = p_id_ingreso;
     DELETE FROM visitas_medicas WHERE id_ingreso = p_id_ingreso;
