@@ -64,21 +64,178 @@ $links = $pdo->query(
       ORDER BY m.apellidos, d.codigo_diagnostico'
 )->fetchAll();
 ?>
-<div class="page-intro"><div><h2>Catálogos clínicos</h2><p class="muted">Administra médicos, diagnósticos y la relación de muchos a muchos entre ambos.</p></div></div>
-<?php if ($error !== ''): ?><div class="alert error"><?= e($error) ?></div><?php endif; ?>
+
+<div class="page-intro">
+    <div>
+        <h2>Catálogos clínicos</h2>
+        <p class="muted">Administra médicos, diagnósticos y la relación entre ambos.</p>
+    </div>
+</div>
+
+<?php if ($error !== ''): ?>
+    <div class="alert error"><?= e($error) ?></div>
+<?php endif; ?>
 <div class="three-column">
-    <section class="panel form-panel"><div class="panel-heading"><div><h3>Nuevo médico</h3><p class="muted">Datos de identificación del profesional.</p></div></div>
-        <form method="post" class="form-stack"><?= csrf_field() ?><input type="hidden" name="action" value="doctor"><label>Código<input name="codigo_medico" maxlength="20" required></label><label>Nombre<input name="nombre" maxlength="80" required></label><label>Apellidos<input name="apellidos" maxlength="120" required></label><label>Especialidad<input name="especialidad" maxlength="100" placeholder="Ej. Medicina interna"></label><button class="button primary" type="submit">Guardar médico</button></form>
+    <section class="panel form-panel">
+        <div class="panel-heading">
+            <div>
+                <h3>Nuevo médico</h3>
+                <p class="muted">Datos de identificación del profesional.</p>
+            </div>
+        </div>
+        <form method="post" class="form-stack">
+            <?= csrf_field() ?>
+            <input type="hidden" name="action" value="doctor">
+            <label>Código
+                <input name="codigo_medico" maxlength="20" required>
+            </label>
+            <label>Nombre
+                <input name="nombre" maxlength="80" required>
+            </label>
+            <label>Apellidos
+                <input name="apellidos" maxlength="120" required>
+            </label>
+            <label>Especialidad
+                <input name="especialidad" maxlength="100" placeholder="Ej. Medicina interna">
+            </label>
+            <button class="button primary" type="submit">Guardar médico</button>
+        </form>
     </section>
-    <section class="panel form-panel"><div class="panel-heading"><div><h3>Nuevo diagnóstico</h3><p class="muted">La descripción se guarda cifrada.</p></div></div>
-        <form method="post" class="form-stack"><?= csrf_field() ?><input type="hidden" name="action" value="diagnosis"><label>Código<input name="codigo_diagnostico" maxlength="20" required></label><label>Descripción<textarea name="descripcion" rows="3" maxlength="500" required></textarea></label><button class="button primary" type="submit">Guardar diagnóstico</button></form>
+    <section class="panel form-panel">
+        <div class="panel-heading">
+            <div>
+                <h3>Nuevo diagnóstico</h3>
+                <p class="muted">La descripción se guarda cifrada.</p>
+            </div>
+        </div>
+        <form method="post" class="form-stack">
+            <?= csrf_field() ?>
+            <input type="hidden" name="action" value="diagnosis">
+            <label>Código
+                <input name="codigo_diagnostico" maxlength="20" required>
+            </label>
+            <label>Descripción
+                <textarea name="descripcion" rows="3" maxlength="500" required></textarea>
+            </label>
+            <button class="button primary" type="submit">Guardar diagnóstico</button>
+        </form>
     </section>
-    <section class="panel form-panel"><div class="panel-heading"><div><h3>Relacionar médico y diagnóstico</h3><p class="muted">Relación entre el médico y el diagnóstico dado.</p></div></div>
-        <form method="post" class="form-stack"><?= csrf_field() ?><input type="hidden" name="action" value="link"><label>Médico<select name="codigo_medico" required><option value="">Selecciona</option><?php foreach ($doctors as $doctor): ?><option value="<?= e($doctor['codigo_medico']) ?>"><?= e($doctor['nombre'] . ' ' . $doctor['apellidos']) ?></option><?php endforeach; ?></select></label><label>Diagnóstico<select name="codigo_diagnostico" required><option value="">Selecciona</option><?php foreach ($diagnoses as $diagnosis): ?><option value="<?= e($diagnosis['codigo_diagnostico']) ?>"><?= e($diagnosis['codigo_diagnostico'] . ' · ' . decrypt_sensitive($diagnosis['descripcion_cifrada'])) ?></option><?php endforeach; ?></select></label><button class="button secondary" type="submit" <?= (!$doctors || !$diagnoses) ? 'disabled' : '' ?>>Crear relación</button></form>
+    <section class="panel form-panel">
+        <div class="panel-heading">
+            <div>
+                <h3>Relacionar médico y diagnóstico</h3>
+                <p class="muted">Relación entre el médico y el diagnóstico dado.</p>
+            </div>
+        </div>
+        <form method="post" class="form-stack">
+            <?= csrf_field() ?>
+            <input type="hidden" name="action" value="link">
+            <label>Médico
+                <select name="codigo_medico" required>
+                    <option value="">Selecciona</option>
+                    <?php foreach ($doctors as $doctor): ?>
+                        <option value="<?= e($doctor['codigo_medico']) ?>"><?= e($doctor['nombre'] . ' ' . $doctor['apellidos']) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </label>
+            <label>Diagnóstico
+                <select name="codigo_diagnostico" required>
+                    <option value="">Selecciona</option>
+                    <?php foreach ($diagnoses as $diagnosis): ?>
+                        <option value="<?= e($diagnosis['codigo_diagnostico']) ?>"><?= e($diagnosis['codigo_diagnostico'] . ' · ' . decrypt_sensitive($diagnosis['descripcion_cifrada'])) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </label>
+            <button class="button secondary" type="submit" <?= (!$doctors || !$diagnoses) ? 'disabled' : '' ?>>Crear relación</button>
+        </form>
     </section>
 </div>
 <div class="two-column">
-    <section class="panel"><div class="panel-heading"><h3>Médicos (<?= count($doctors) ?>)</h3></div><div class="table-wrap"><table><thead><tr><th>Código</th><th>Nombre</th><th>Especialidad</th></tr></thead><tbody><?php foreach ($doctors as $doctor): ?><tr><td><?= e($doctor['codigo_medico']) ?></td><td><?= e($doctor['nombre'] . ' ' . $doctor['apellidos']) ?></td><td><?= e($doctor['especialidad'] ?: '—') ?></td></tr><?php endforeach; ?><?php if (!$doctors): ?><tr><td colspan="3" class="empty-cell">Sin médicos.</td></tr><?php endif; ?></tbody></table></div></section>
-    <section class="panel"><div class="panel-heading"><h3>Diagnósticos (<?= count($diagnoses) ?>)</h3></div><div class="table-wrap"><table><thead><tr><th>Código</th><th>Descripción</th></tr></thead><tbody><?php foreach ($diagnoses as $diagnosis): ?><tr><td><?= e($diagnosis['codigo_diagnostico']) ?></td><td><?= e(decrypt_sensitive($diagnosis['descripcion_cifrada'])) ?></td></tr><?php endforeach; ?><?php if (!$diagnoses): ?><tr><td colspan="2" class="empty-cell">Sin diagnósticos.</td></tr><?php endif; ?></tbody></table></div></section>
+    <section class="panel">
+        <div class="panel-heading">
+            <h3>Médicos (<?= count($doctors) ?>)</h3>
+        </div>
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Código</th>
+                        <th>Nombre</th>
+                        <th>Especialidad</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($doctors as $doctor): ?>
+                        <tr>
+                            <td><?= e($doctor['codigo_medico']) ?></td>
+                            <td><?= e($doctor['nombre'] . ' ' . $doctor['apellidos']) ?></td>
+                            <td><?= e($doctor['especialidad'] ?: '—') ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                    <?php if (!$doctors): ?>
+                        <tr>
+                            <td colspan="3" class="empty-cell">Sin médicos.</td>
+                        </tr>
+                    <?php endif; ?>
+                </tbody>
+            </table>
+        </div>
+    </section>
+    <section class="panel">
+        <div class="panel-heading">
+            <h3>Diagnósticos (<?= count($diagnoses) ?>)</h3>
+        </div>
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Código</th>
+                        <th>Descripción</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($diagnoses as $diagnosis): ?>
+                        <tr>
+                            <td><?= e($diagnosis['codigo_diagnostico']) ?></td>
+                            <td><?= e(decrypt_sensitive($diagnosis['descripcion_cifrada'])) ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                    <?php if (!$diagnoses): ?>
+                        <tr>
+                            <td colspan="2" class="empty-cell">Sin diagnósticos.</td>
+                        </tr>
+                    <?php endif; ?>
+                </tbody>
+            </table>
+        </div>
+    </section>
 </div>
-<section class="panel"><div class="panel-heading"><h3>Relaciones médico-diagnóstico (<?= count($links) ?>)</h3></div><div class="table-wrap"><table><thead><tr><th>Médico</th><th>Diagnóstico</th></tr></thead><tbody><?php foreach ($links as $link): ?><tr><td><?= e($link['medico']) ?></td><td><?= e($link['codigo_diagnostico'] . ' · ' . decrypt_sensitive($link['descripcion_cifrada'])) ?></td></tr><?php endforeach; ?><?php if (!$links): ?><tr><td colspan="2" class="empty-cell">Todavía no hay relaciones registradas.</td></tr><?php endif; ?></tbody></table></div></section>
+
+<section class="panel">
+    <div class="panel-heading">
+        <h3>Relaciones médico-diagnóstico (<?= count($links) ?>)</h3>
+    </div>
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Médico</th>
+                    <th>Diagnóstico</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($links as $link): ?>
+                    <tr>
+                        <td><?= e($link['medico']) ?></td>
+                        <td><?= e($link['codigo_diagnostico'] . ' · ' . decrypt_sensitive($link['descripcion_cifrada'])) ?></td>
+                    </tr>
+                <?php endforeach; ?>
+                <?php if (!$links): ?>
+                    <tr>
+                        <td colspan="2" class="empty-cell">Todavía no hay relaciones registradas.</td>
+                    </tr>
+                <?php endif; ?>
+            </tbody>
+        </table>
+    </div>
+</section>

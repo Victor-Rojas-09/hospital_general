@@ -64,16 +64,112 @@ $users = $pdo->query(
       ORDER BY u.id_usuario'
 )->fetchAll();
 ?>
-<div class="page-intro"><div><h2>Usuarios y permisos</h2><p class="muted">Crea cuentas y asigna roles para limitar el acceso a los módulos.</p></div></div>
-<?php if ($error !== ''): ?><div class="alert error"><?= e($error) ?></div><?php endif; ?>
+
+<div class="page-intro">
+    <div>
+        <h2>Control de Usuarios</h2>
+        <p class="muted">Crea cuentas y asigna roles para limitar el acceso a los módulos.</p>
+    </div>
+</div>
+
+<?php if ($error !== ''): ?>
+    <div class="alert error"><?= e($error) ?></div>
+<?php endif; ?>
+
 <div class="content-grid">
-    <section class="panel form-panel"><div class="panel-heading"><div><h3>Crear usuario</h3><p class="muted">La contraseña se almacena mediante password_hash.</p></div></div>
-        <form method="post" class="form-stack"><?= csrf_field() ?><input type="hidden" name="action" value="create"><label>Nombre de usuario<input name="usuario" maxlength="40" required></label><label>Nombre completo<input name="nombre" maxlength="100" required></label><label>Contraseña inicial<input type="password" name="password" minlength="8" required></label><label>Rol<select name="id_rol" required><?php foreach ($roles as $role): ?><option value="<?= e($role['id_rol']) ?>"><?= e(ucfirst($role['nombre'])) ?></option><?php endforeach; ?></select></label><button class="button primary" type="submit">Crear usuario</button></form>
+    <section class="panel form-panel">
+        <div class="panel-heading">
+            <div>
+                <h3>Crear usuario</h3>
+                <p class="muted">La contraseña se almacena mediante password_hash.</p>
+            </div>
+        </div>
+        <form method="post" class="form-stack">
+            <?= csrf_field() ?>
+            <input type="hidden" name="action" value="create">
+            <label>Nombre de usuario
+                <input name="usuario" maxlength="40" required>
+            </label>
+            <label>Nombre completo
+                <input name="nombre" maxlength="100" required>
+            </label>
+            <label>Contraseña inicial
+                <input type="password" name="password" minlength="8" required>
+            </label>
+            <label>Rol
+                <select name="id_rol" required>
+                    <?php foreach ($roles as $role): ?>
+                        <option value="<?= e($role['id_rol']) ?>"><?= e(ucfirst($role['nombre'])) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </label>
+            <button class="button primary" type="submit">Crear usuario</button>
+        </form>
     </section>
-    <section class="panel form-panel"><div class="panel-heading"><div><h3>Cambiar mi contraseña</h3><p class="muted">Recomendado después del primer ingreso.</p></div></div>
-        <form method="post" class="form-stack"><?= csrf_field() ?><input type="hidden" name="action" value="password"><label>Contraseña actual<input type="password" name="old_password" required></label><label>Nueva contraseña<input type="password" name="new_password" minlength="8" required></label><button class="button secondary" type="submit">Actualizar contraseña</button></form>
+
+    <section class="panel form-panel">
+        <div class="panel-heading">
+            <div>
+                <h3>Cambiar mi contraseña</h3>
+                <p class="muted">Cambio de contraseña para Root User.</p>
+            </div>
+        </div>
+        <form method="post" class="form-stack">
+            <?= csrf_field() ?>
+            <input type="hidden" name="action" value="password">
+            <label>Contraseña actual
+                <input type="password" name="old_password" required>
+            </label>
+            <label>Nueva contraseña
+                <input type="password" name="new_password" minlength="8" required>
+            </label>
+            <button class="button secondary" type="submit">Actualizar contraseña</button>
+        </form>
     </section>
 </div>
-<section class="panel"><div class="panel-heading"><h3>Cuentas registradas</h3></div><div class="table-wrap"><table><thead><tr><th>Usuario</th><th>Rol</th><th>Creado</th><th>Estado</th><th>Acción</th></tr></thead><tbody>
-<?php foreach ($users as $item): ?><tr><td><strong><?= e($item['nombre']) ?></strong><small><?= e($item['usuario']) ?></small></td><td><?= e(ucfirst($item['rol'])) ?></td><td><?= e(date('d/m/Y', strtotime($item['creado_en']))) ?></td><td><span class="tag <?= $item['activo'] ? 'success' : 'muted-tag' ?>"><?= $item['activo'] ? 'Activo' : 'Inactivo' ?></span></td><td><?php if ((int) $item['id_usuario'] !== (int) current_user()['id']): ?><form method="post" class="inline-form" data-confirm="¿Cambiar el estado de esta cuenta?"><?= csrf_field() ?><input type="hidden" name="action" value="toggle"><input type="hidden" name="id_usuario" value="<?= e($item['id_usuario']) ?>"><button class="button secondary small" type="submit"><?= $item['activo'] ? 'Desactivar' : 'Activar' ?></button></form><?php else: ?><span class="muted">Sesión actual</span><?php endif; ?></td></tr><?php endforeach; ?>
-</tbody></table></div></section>
+
+<section class="panel">
+    <div class="panel-heading">
+        <h3>Cuentas registradas</h3>
+    </div>
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Usuario</th>
+                    <th>Rol</th>
+                    <th>Creado</th>
+                    <th>Estado</th>
+                    <th>Acción</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($users as $item): ?>
+                    <tr>
+                        <td>
+                            <strong><?= e($item['nombre']) ?></strong>
+                            <small><?= e($item['usuario']) ?></small>
+                        </td>
+                        <td><?= e(ucfirst($item['rol'])) ?></td>
+                        <td><?= e(date('d/m/Y', strtotime($item['creado_en']))) ?></td>
+                        <td>
+                            <span class="tag <?= $item['activo'] ? 'success' : 'muted-tag' ?>"><?= $item['activo'] ? 'Activo' : 'Inactivo' ?></span>
+                        </td>
+                        <td>
+                            <?php if ((int) $item['id_usuario'] !== (int) current_user()['id']): ?>
+                                <form method="post" class="inline-form" data-confirm="¿Cambiar el estado de esta cuenta?">
+                                    <?= csrf_field() ?>
+                                    <input type="hidden" name="action" value="toggle">
+                                    <input type="hidden" name="id_usuario" value="<?= e($item['id_usuario']) ?>">
+                                    <button class="button secondary small" type="submit"><?= $item['activo'] ? 'Desactivar' : 'Activar' ?></button>
+                                </form>
+                            <?php else: ?>
+                                <span class="muted">Sesión actual</span>
+                            <?php endif; ?>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+    </div>
+</section>

@@ -188,35 +188,139 @@ $activeAdmissions = $pdo->query(
 )->fetchAll();
 $plants = $pdo->query('SELECT numero_planta, nombre FROM plantas ORDER BY numero_planta')->fetchAll();
 ?>
-<div class="page-intro"><div><h2>Admisión y ubicación</h2><p class="muted">Registra ingresos, cambia pacientes de cama y procesa el alta hospitalaria.</p></div><span class="count-pill"><?= count($activeAdmissions) ?> ingresos activos</span></div>
-<?php if ($error !== ''): ?><div class="alert error"><?= e($error) ?></div><?php endif; ?>
+
+<div class="page-intro">
+    <div>
+        <h2>Admisión y ubicación</h2>
+        <p class="muted">Registra ingresos, cambia pacientes de cama y procesa el alta hospitalaria.</p>
+    </div>
+    <span class="count-pill"><?= count($activeAdmissions) ?> ingresos activos</span>
+</div>
+
+<?php if ($error !== ''): ?>
+    <div class="alert error"><?= e($error) ?></div>
+<?php endif; ?>
+
 <div class="content-grid">
-    <section class="panel form-panel"><div class="panel-heading"><div><h3>Nuevo ingreso</h3><p class="muted">El paciente y la cama quedan asociados en una transacción.</p></div></div>
+    <section class="panel form-panel">
+        <div class="panel-heading">
+            <div>
+                <h3>Nuevo ingreso</h3>
+                <p class="muted">El paciente y la cama quedan asociados en una transacción.</p>
+            </div>
+        </div>
         <form method="post" class="form-stack">
-            <?= csrf_field() ?><input type="hidden" name="action" value="create">
-            <label>Paciente<select name="id_paciente" required><option value="">Selecciona un paciente</option><?php foreach ($patients as $patient): ?><option value="<?= e($patient['id_paciente']) ?>"><?= e($patient['apellidos'] . ', ' . $patient['nombre']) ?> (ID <?= e($patient['id_paciente']) ?>)</option><?php endforeach; ?></select></label>
-            <label>Cama disponible<select name="cama_compuesta" id="new-bed-select" required><option value="">Selecciona planta y cama</option><?php foreach ($freeBeds as $bed): ?><option value="<?= e($bed['numero_planta'] . ':' . $bed['numero_cama']) ?>"><?= e('Planta ' . $bed['numero_planta'] . ' · ' . $bed['planta_nombre'] . ' / Cama ' . $bed['numero_cama']) ?></option><?php endforeach; ?></select></label>
-            <label>Fecha y hora de ingreso<input type="datetime-local" name="fecha_ingreso" value="<?= date('Y-m-d\TH:i') ?>" required></label>
+            <?= csrf_field() ?>
+            <input type="hidden" name="action" value="create">
+            <label>Paciente
+                <select name="id_paciente" required>
+                    <option value="">Selecciona un paciente</option>
+                    <?php foreach ($patients as $patient): ?>
+                        <option value="<?= e($patient['id_paciente']) ?>"><?= e($patient['apellidos'] . ', ' . $patient['nombre']) ?> (ID <?= e($patient['id_paciente']) ?>)</option>
+                    <?php endforeach; ?>
+                </select>
+            </label>
+            <label>Cama disponible
+                <select name="cama_compuesta" id="new-bed-select" required>
+                    <option value="">Selecciona planta y cama</option>
+                    <?php foreach ($freeBeds as $bed): ?>
+                        <option value="<?= e($bed['numero_planta'] . ':' . $bed['numero_cama']) ?>"><?= e('Planta ' . $bed['numero_planta'] . ' · ' . $bed['planta_nombre'] . ' / Cama ' . $bed['numero_cama']) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </label>
+            <label>Fecha y hora de ingreso
+                <input type="datetime-local" name="fecha_ingreso" value="<?= date('Y-m-d\TH:i') ?>" required>
+            </label>
             <button class="button primary" type="submit" <?= (!$patients || !$freeBeds) ? 'disabled' : '' ?>>Registrar ingreso</button>
-            <?php if (!$patients): ?><small class="help-text">Primero registra un paciente sin ingreso activo.</small><?php endif; ?>
-            <?php if (!$freeBeds): ?><small class="help-text">No hay camas disponibles. Registra una planta o libera una cama.</small><?php endif; ?>
+            <?php if (!$patients): ?>
+                <small class="help-text">Primero registra un paciente sin ingreso activo.</small>
+            <?php endif; ?>
+            <?php if (!$freeBeds): ?>
+                <small class="help-text">No hay camas disponibles. Registra una planta o libera una cama.</small>
+            <?php endif; ?>
         </form>
     </section>
-    <section class="panel form-panel"><div class="panel-heading"><div><h3>Cambio de cama</h3><p class="muted">Se cierra la asignación anterior sin eliminarla.</p></div></div>
+
+    <section class="panel form-panel">
+        <div class="panel-heading">
+            <div>
+                <h3>Cambio de cama</h3>
+                <p class="muted">Se cierra la asignación anterior sin eliminarla.</p>
+            </div>
+        </div>
         <form method="post" class="form-stack">
-            <?= csrf_field() ?><input type="hidden" name="action" value="move">
-            <label>Ingreso activo<select name="id_ingreso" required><option value="">Selecciona un ingreso</option><?php foreach ($activeAdmissions as $admission): ?><option value="<?= e($admission['id_ingreso']) ?>"><?= e($admission['nombre'] . ' ' . $admission['apellidos'] . ' · Ingreso #' . $admission['id_ingreso']) ?></option><?php endforeach; ?></select></label>
-            <label>Nueva cama disponible<select name="cama_compuesta" id="move-bed-select" required><option value="">Selecciona planta y cama</option><?php foreach ($freeBeds as $bed): ?><option value="<?= e($bed['numero_planta'] . ':' . $bed['numero_cama']) ?>"><?= e('Planta ' . $bed['numero_planta'] . ' / Cama ' . $bed['numero_cama']) ?></option><?php endforeach; ?></select></label>
-            <label>Fecha y hora del movimiento<input type="datetime-local" name="fecha_movimiento" value="<?= date('Y-m-d\TH:i') ?>" required></label>
+            <?= csrf_field() ?>
+            <input type="hidden" name="action" value="move">
+            <label>Ingreso activo
+                <select name="id_ingreso" required>
+                    <option value="">Selecciona un ingreso</option>
+                    <?php foreach ($activeAdmissions as $admission): ?>
+                        <option value="<?= e($admission['id_ingreso']) ?>"><?= e($admission['nombre'] . ' ' . $admission['apellidos'] . ' · Ingreso #' . $admission['id_ingreso']) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </label>
+            <label>Nueva cama disponible
+                <select name="cama_compuesta" id="move-bed-select" required>
+                    <option value="">Selecciona planta y cama</option>
+                    <?php foreach ($freeBeds as $bed): ?>
+                        <option value="<?= e($bed['numero_planta'] . ':' . $bed['numero_cama']) ?>"><?= e('Planta ' . $bed['numero_planta'] . ' / Cama ' . $bed['numero_cama']) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </label>
+            <label>Fecha y hora del movimiento
+                <input type="datetime-local" name="fecha_movimiento" value="<?= date('Y-m-d\TH:i') ?>" required>
+            </label>
             <button class="button secondary" type="submit" <?= (!$activeAdmissions || !$freeBeds) ? 'disabled' : '' ?>>Registrar cambio</button>
         </form>
     </section>
 </div>
-<section class="panel"><div class="panel-heading"><div><h3>Pacientes hospitalizados</h3><p class="muted">El alta mueve sus datos relacionados a las tablas históricas.</p></div></div>
-    <div class="table-wrap"><table><thead><tr><th>Paciente</th><th>Ingreso</th><th>Ubicación actual</th><th>Acción</th></tr></thead><tbody>
-    <?php foreach ($activeAdmissions as $admission): ?>
-        <tr><td><strong><?= e($admission['nombre'] . ' ' . $admission['apellidos']) ?></strong><small>ID paciente <?= e($admission['id_paciente']) ?></small></td><td>#<?= e($admission['id_ingreso']) ?><small><?= e(date('d/m/Y H:i', strtotime($admission['fecha_ingreso']))) ?></small></td><td><?= $admission['numero_planta'] === null ? 'Sin cama' : e('Planta ' . $admission['numero_planta'] . ' · ' . $admission['planta_nombre'] . ' / Cama ' . $admission['numero_cama']) ?></td><td><form method="post" class="inline-form" data-confirm="¿Dar de alta y archivar toda la información de este ingreso?"><?= csrf_field() ?><input type="hidden" name="action" value="discharge"><input type="hidden" name="id_ingreso" value="<?= e($admission['id_ingreso']) ?>"><button class="button danger small" type="submit">Dar de alta</button></form></td></tr>
-    <?php endforeach; ?>
-    <?php if (!$activeAdmissions): ?><tr><td colspan="4" class="empty-cell">No hay pacientes hospitalizados.</td></tr><?php endif; ?>
-    </tbody></table></div>
+
+<section class="panel">
+    <div class="panel-heading">
+        <div>
+            <h3>Pacientes hospitalizados</h3>
+            <p class="muted">El alta mueve sus datos relacionados a las tablas históricas.</p>
+        </div>
+    </div>
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Paciente</th>
+                    <th>Ingreso</th>
+                    <th>Ubicación actual</th>
+                    <th>Acción</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($activeAdmissions as $admission): ?>
+                    <tr>
+                        <td>
+                            <strong><?= e($admission['nombre'] . ' ' . $admission['apellidos']) ?></strong>
+                            <small>ID paciente <?= e($admission['id_paciente']) ?></small>
+                        </td>
+                        <td>
+                            #<?= e($admission['id_ingreso']) ?>
+                            <small><?= e(date('d/m/Y H:i', strtotime($admission['fecha_ingreso']))) ?></small>
+                        </td>
+                        <td><?= $admission['numero_planta'] === null ? 'Sin cama' : e('Planta ' . $admission['numero_planta'] . ' · ' . $admission['planta_nombre'] . ' / Cama ' . $admission['numero_cama']) ?></td>
+                        <td>
+                            <form method="post" class="inline-form" data-confirm="¿Dar de alta y archivar toda la información de este ingreso?">
+                                <?= csrf_field() ?>
+                                <input type="hidden" name="action" value="discharge">
+                                <input type="hidden" name="id_ingreso" value="<?= e($admission['id_ingreso']) ?>">
+                                <button class="button danger small" type="submit">Dar de alta</button>
+                            </form>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+
+                <?php if (!$activeAdmissions): ?>
+                    <tr>
+                        <td colspan="4" class="empty-cell">No hay pacientes hospitalizados.</td>
+                    </tr>
+                <?php endif; ?>
+            </tbody>
+        </table>
+    </div>
 </section>

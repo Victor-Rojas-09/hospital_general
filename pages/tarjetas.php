@@ -73,25 +73,65 @@ $cards = $pdo->query(
       ORDER BY t.creada_en DESC'
 )->fetchAll();
 ?>
-<div class="page-intro"><div><h2>Tarjetas de visita</h2><p class="muted">Emite pases con horarios específicos y controla el límite de cuatro tarjetas activas por paciente.</p></div><span class="count-pill"><?= count($cards) ?> tarjetas activas/registradas</span></div>
-<?php if ($error !== ''): ?><div class="alert error"><?= e($error) ?></div><?php endif; ?>
+
+<div class="page-intro">
+    <div><h2>Ingreso de visitas</h2>
+        <p class="muted">Emite pases con horarios específicos y controla el límite de cuatro tarjetas activas por paciente.</p>
+    </div>
+    <span class="count-pill"><?= count($cards) ?> tarjetas activas/registradas</span>
+</div>
+
+<?php if ($error !== ''): ?>
+
+<div class="alert error"><?= e($error) ?></div><?php endif; ?>
 <div class="content-grid">
-    <section class="panel form-panel"><div class="panel-heading"><div><h3>Emitir tarjeta</h3><p class="muted">El sistema asigna uno de los cuatro espacios disponibles (1 a 4).</p></div></div>
+    <section class="panel form-panel">
+        <div class="panel-heading">
+            <div>
+                <h3>Emitir tarjeta</h3>
+                <p class="muted">El sistema asigna uno de los cuatro espacios disponibles (1 a 4).</p>
+            </div>
+        </div>
         <form method="post" class="form-stack">
             <?= csrf_field() ?><input type="hidden" name="action" value="create">
-            <label>Paciente / ingreso<select name="id_ingreso" required><option value="">Selecciona un ingreso activo</option><?php foreach ($admissions as $item): ?><option value="<?= e($item['id_ingreso']) ?>"><?= e($item['nombre'] . ' ' . $item['apellidos'] . ' · Ingreso #' . $item['id_ingreso']) ?></option><?php endforeach; ?></select></label>
-            <div class="form-row"><label>Hora de inicio<input type="time" name="hora_inicio" required></label><label>Hora de fin<input type="time" name="hora_fin" required></label></div>
+            <label>Paciente / ingreso<select name="id_ingreso" required>
+                <option value="">Selecciona un ingreso activo</option>
+                <?php foreach ($admissions as $item): ?>
+                <option value="<?= e($item['id_ingreso']) ?>"><?= e($item['nombre'] . ' ' . $item['apellidos'] . ' · Ingreso #' . $item['id_ingreso']) ?></option>
+                <?php endforeach; ?></select>
+            </label>
+            <div class="form-row">
+                <label>Hora de inicio<input type="time" name="hora_inicio" required></label>
+                <label>Hora de fin<input type="time" name="hora_fin" required></label>
+            </div>
             <button class="button primary" type="submit" <?= !$admissions ? 'disabled' : '' ?>>Emitir tarjeta</button>
             <?php if (!$admissions): ?><small class="help-text">No hay ingresos activos para asignar tarjetas.</small><?php endif; ?>
         </form>
     </section>
-    <section class="panel"><div class="panel-heading"><div><h3>Tarjetas emitidas</h3><p class="muted">Las tarjetas desactivadas se conservan para trazabilidad.</p></div></div>
+    <section class="panel">
+        <div class="panel-heading">
+            <div>
+                <h3>Tarjetas emitidas</h3>
+                <p class="muted">Las tarjetas desactivadas se conservan para trazabilidad.</p>
+            </div>
+        </div>
         <div class="table-wrap"><table><thead><tr><th>Paciente</th><th>Tarjeta</th><th>Horario</th><th>Estado</th><th>Acción</th></tr></thead><tbody>
         <?php foreach ($cards as $card): ?>
-            <tr><td><strong><?= e($card['nombre'] . ' ' . $card['apellidos']) ?></strong><small>Ingreso #<?= e($card['id_ingreso']) ?></small></td><td>#<?= e($card['numero_tarjeta']) ?></td><td><?= e(substr($card['hora_inicio'], 0, 5) . ' – ' . substr($card['hora_fin'], 0, 5)) ?></td><td><span class="tag <?= $card['activa'] ? 'success' : 'muted-tag' ?>"><?= $card['activa'] ? 'Activa' : 'Inactiva' ?></span></td><td><?php if ($card['activa']): ?><form method="post" class="inline-form" data-confirm="¿Desactivar esta tarjeta?"><?= csrf_field() ?><input type="hidden" name="action" value="deactivate"><input type="hidden" name="id_tarjeta" value="<?= e($card['id_tarjeta']) ?>"><button class="button secondary small" type="submit">Desactivar</button></form><?php else: ?><span class="muted">—</span><?php endif; ?></td></tr>
+            <tr><td>
+                <strong><?= e($card['nombre'] . ' ' . $card['apellidos']) ?></strong>
+                <small>Ingreso #<?= e($card['id_ingreso']) ?></small>
+                </td><td>#<?= e($card['numero_tarjeta']) ?>
+                </td><td><?= e(substr($card['hora_inicio'], 0, 5) . ' – ' . substr($card['hora_fin'], 0, 5)) ?>
+                </td><td><span class="tag <?= $card['activa'] ? 'success' : 'muted-tag' ?>"><?= $card['activa'] ? 'Activa' : 'Inactiva' ?></span>
+                </td><td><?php if ($card['activa']): ?>
+                <form method="post" class="inline-form" data-confirm="¿Desactivar esta tarjeta?"><?= csrf_field() ?>
+                <input type="hidden" name="action" value="deactivate">
+                <input type="hidden" name="id_tarjeta" value="<?= e($card['id_tarjeta']) ?>">
+                <button class="button secondary small" type="submit">Desactivar</button>
+                </form><?php else: ?><span class="muted">—</span><?php endif; ?>
+            </td></tr>
         <?php endforeach; ?>
         <?php if (!$cards): ?><tr><td colspan="5" class="empty-cell">No hay tarjetas emitidas.</td></tr><?php endif; ?>
         </tbody></table></div>
     </section>
 </div>
-<div class="notice-box">El límite de cuatro tarjetas activas se controla dentro de una transacción bloqueando el ingreso. La columna generada `slot_activo` y su índice único impiden duplicar un espacio activo. Al desactivar una tarjeta, el espacio queda disponible, pero el registro anterior se conserva.</div>

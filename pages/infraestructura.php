@@ -44,25 +44,86 @@ $plants = $pdo->query(
       ORDER BY p.numero_planta'
 )->fetchAll();
 ?>
-<div class="page-intro"><div><h2>Infraestructura hospitalaria</h2><p class="muted">Registra las plantas y genera automáticamente sus camas numeradas.</p></div></div>
-<?php if ($error !== ''): ?><div class="alert error"><?= e($error) ?></div><?php endif; ?>
+
+<div class="page-intro">
+    <div>
+        <h2>Infraestructura hospitalaria</h2>
+        <p class="muted">Registra las plantas y genera automáticamente sus camas numeradas.</p>
+    </div>
+</div>
+
+<?php if ($error !== ''): ?>
+    <div class="alert error"><?= e($error) ?></div>
+<?php endif; ?>
+
 <div class="content-grid">
-    <section class="panel form-panel"><div class="panel-heading"><div><h3>Registrar planta</h3><p class="muted">Se crearán camas desde el número 1 hasta la capacidad indicada.</p></div></div>
+    <section class="panel form-panel">
+        <div class="panel-heading">
+            <div>
+                <h3>Registrar planta</h3>
+                <p class="muted">Se crearán camas desde el número 1 hasta la capacidad indicada.</p>
+            </div>
+        </div>
         <form method="post" class="form-stack">
             <?= csrf_field() ?>
-            <label>Número de planta<input type="number" name="numero_planta" min="0" max="999" required></label>
-            <label>Nombre de la planta<input type="text" name="nombre" maxlength="80" placeholder="Ej. Medicina interna" required></label>
-            <label>Capacidad de camas<input type="number" name="capacidad_camas" min="1" max="500" required></label>
+            <label>Número de planta
+                <input type="number" name="numero_planta" min="0" max="999" required>
+            </label>
+            <label>Nombre de la planta
+                <input type="text" name="nombre" maxlength="80" placeholder="Ej. Medicina interna" required>
+            </label>
+            <label>Capacidad de camas
+                <input type="number" name="capacidad_camas" min="1" max="500" required>
+            </label>
             <button class="button primary" type="submit">Crear planta y camas</button>
         </form>
     </section>
-    <section class="panel"><div class="panel-heading"><div><h3>Plantas registradas</h3><p class="muted">La ocupación se actualiza con los ingresos y movimientos.</p></div></div>
-        <div class="table-wrap"><table><thead><tr><th>Planta</th><th>Camas</th><th>Ocupadas</th><th>Disponibles</th><th>Ocupación</th></tr></thead><tbody>
-        <?php foreach ($plants as $plant): $available = (int) $plant['camas_registradas'] - (int) $plant['ocupadas']; $percent = (int) $plant['camas_registradas'] > 0 ? round(((int) $plant['ocupadas'] / (int) $plant['camas_registradas']) * 100) : 0; ?>
-            <tr><td><strong><?= e($plant['numero_planta']) ?> · <?= e($plant['nombre']) ?></strong><small>Capacidad declarada: <?= e($plant['capacidad_camas']) ?></small></td><td><?= e($plant['camas_registradas']) ?></td><td><?= e($plant['ocupadas']) ?></td><td><?= e($available) ?></td><td><span class="tag <?= $percent >= 90 ? 'warning' : 'success' ?>"><?= $percent ?>%</span></td></tr>
-        <?php endforeach; ?>
-        <?php if (!$plants): ?><tr><td colspan="5" class="empty-cell">No hay plantas registradas.</td></tr><?php endif; ?>
-        </tbody></table></div>
+
+    <section class="panel">
+        <div class="panel-heading">
+            <div>
+                <h3>Plantas registradas</h3>
+                <p class="muted">La ocupación se actualiza con los ingresos y movimientos.</p>
+            </div>
+        </div>
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Planta</th>
+                        <th>Camas</th>
+                        <th>Ocupadas</th>
+                        <th>Disponibles</th>
+                        <th>Ocupación</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php
+                    foreach ($plants as $plant):
+                        $available = (int) $plant['camas_registradas'] - (int) $plant['ocupadas'];
+                        $percent = (int) $plant['camas_registradas'] > 0 ? round(((int) $plant['ocupadas'] / (int) $plant['camas_registradas']) * 100) : 0;
+                    ?>
+                        <tr>
+                            <td>
+                                <strong><?= e($plant['numero_planta']) ?> · <?= e($plant['nombre']) ?></strong>
+                                <small>Capacidad declarada: <?= e($plant['capacidad_camas']) ?></small>
+                            </td>
+                            <td><?= e($plant['camas_registradas']) ?></td>
+                            <td><?= e($plant['ocupadas']) ?></td>
+                            <td><?= e($available) ?></td>
+                            <td>
+                                <span class="tag <?= $percent >= 90 ? 'warning' : 'success' ?>"><?= $percent ?>%</span>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+
+                    <?php if (!$plants): ?>
+                        <tr>
+                            <td colspan="5" class="empty-cell">No hay plantas registradas.</td>
+                        </tr>
+                    <?php endif; ?>
+                </tbody>
+            </table>
+        </div>
     </section>
 </div>
-<div class="notice-box"><strong>Integridad:</strong> las camas se identifican mediante la clave compuesta (número de planta, número de cama). Por eso la cama 12 puede existir en más de una planta.</div>
