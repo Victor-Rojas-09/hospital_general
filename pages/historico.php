@@ -2,12 +2,38 @@
 require_role(['administrador', 'recepcion', 'medico']);
 $pdo = db();
 $selectedAdmission = (int) get_value('ingreso', '0');
+$search = get_value('q');
 $history = $pdo->query(
-    'SELECT h.*, p.nombre AS nombre_actual, p.apellidos AS apellidos_actuales
+    'SELECT h.*
        FROM historico_ingresos h
-       JOIN pacientes p ON p.id_paciente = h.id_paciente
       ORDER BY h.fecha_alta DESC'
 )->fetchAll();
+
+if ($search !== '') {
+    $normalizedSearch = strtoupper((string) preg_replace('/[\s.\-]+/u', '', $search));
+    $history = array_values(array_filter(
+        $history,
+        static function (array $item) use ($search, $normalizedSearch): bool {
+            $patientName = $item['paciente_nombre'] . ' ' . $item['paciente_apellidos'];
+            $matchesName = function_exists('mb_stripos')
+                ? mb_stripos($patientName, $search, 0, 'UTF-8') !== false
+                : stripos($patientName, $search) !== false;
+            $matchesAdmission = str_contains((string) $item['id_ingreso'], $search);
+            $matchesPatient = str_contains((string) $item['id_paciente'], $search);
+
+            if ($matchesName || $matchesAdmission || $matchesPatient) {
+                return true;
+            }
+
+            // NSS y DNI están cifrados en la base de datos; se comparan descifrados de forma exacta.
+            $nss = strtoupper((string) preg_replace('/[\s.\-]+/u', '', decrypt_sensitive($item['nss_cifrado'])));
+            $dni = strtoupper((string) preg_replace('/[\s.\-]+/u', '', decrypt_sensitive($item['dni_cifrado'])));
+
+            return $normalizedSearch !== ''
+                && ($normalizedSearch === $nss || $normalizedSearch === $dni);
+        }
+    ));
+}
 $selected = null;
 $assignments = $cards = $visits = $diagnoses = [];
 if ($selectedAdmission > 0) {
@@ -34,57 +60,14 @@ if ($selectedAdmission > 0) {
     <span class="count-pill"><?= count($history) ?> ingresos archivados</span>
 </div>
 
-<section class="panel">
-    <div class="panel-heading">
-        <div>
-            <h3>Ingresos archivados</h3>
-            <p class="muted">Selecciona un ingreso para consultar sus detalles.</p>
-        </div>
-    </div>
-    <div class="table-wrap">
-        <table>
-            <thead>
-                <tr>
-                    <th>Paciente</th>
-                    <th>Ingreso</th>
-                    <th>Alta</th>
-                    <th>Datos archivados</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php foreach ($history as $item): ?>
-                    <tr>
-                        <td>
-                            <strong><?= e($item['paciente_nombre'] . ' ' . $item['paciente_apellidos']) ?></strong>
-                            <small>ID paciente <?= e($item['id_paciente']) ?></small>
-                        </td>
-                        <td>
-                            #<?= e($item['id_ingreso']) ?>
-                            <small><?= e(date('d/m/Y H:i', strtotime($item['fecha_ingreso']))) ?></small>
-                        </td>
-                        <td><?= e(date('d/m/Y H:i', strtotime($item['fecha_alta']))) ?></td>
-                        <td><a class="text-link" href="dashboard.php?page=historico&ingreso=<?= e($item['id_ingreso']) ?>">Consultar detalle →</a></td>
-                    </tr>
-                <?php endforeach; ?>
-
-                <?php if (!$history): ?>
-                    <tr>
-                        <td colspan="4" class="empty-cell">Todavía no hay ingresos archivados. El alta se realiza desde Ingresos y camas.</td>
-                    </tr>
-                <?php endif; ?>
-            </tbody>
-        </table>
-    </div>
-</section>
-
 <?php if ($selected): ?>
-<section class="panel">
+<section class="panel" id="detalle-ingreso">
     <div class="panel-heading">
         <div>
             <h3>Detalle del ingreso #<?= e($selected['id_ingreso']) ?></h3>
             <p class="muted"><?= e($selected['paciente_nombre'] . ' ' . $selected['paciente_apellidos']) ?> · NSS <?= e(decrypt_sensitive($selected['nss_cifrado'])) ?> · DNI <?= e(decrypt_sensitive($selected['dni_cifrado'])) ?></p>
         </div>
-        <a class="text-link" href="dashboard.php?page=historico">Cerrar detalle</a>
+        <a class="text-link" href="dashboard.php?page=historico<?= $search !== '' ? '&amp;q=' . rawurlencode($search) : '' ?>">Cerrar detalle</a>
     </div>
 
     <div class="detail-grid">
@@ -228,6 +211,59 @@ if ($selectedAdmission > 0) {
         </div>
     </div>
 </section>
-<?php elseif ($selectedAdmission > 0): ?>
+<?php endif; ?>
+
+<section class="panel">
+    <div class="panel-heading">
+        <div>
+            <h3>Ingresos archivados</h3>
+            <p class="muted">Selecciona un ingreso para consultar sus detalles.</p>
+        </div>
+    </div>
+    <form method="get" class="search-form">
+        <input type="hidden" name="page" value="historico">
+        <input type="search" name="q" placeholder="Nombre, NSS, DNI, ID de paciente o ingreso..." value="<?= e($search) ?>">
+        <button class="button secondary" type="submit">Buscar</button>
+        <?php if ($search !== ''): ?>
+            <a class="text-link" href="dashboard.php?page=historico">Limpiar</a>
+        <?php endif; ?>
+    </form>
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Paciente</th>
+                    <th>Ingreso</th>
+                    <th>Alta</th>
+                    <th>Datos archivados</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($history as $item): ?>
+                    <tr>
+                        <td>
+                            <strong><?= e($item['paciente_nombre'] . ' ' . $item['paciente_apellidos']) ?></strong>
+                            <small>ID paciente <?= e($item['id_paciente']) ?></small>
+                        </td>
+                        <td>
+                            #<?= e($item['id_ingreso']) ?>
+                            <small><?= e(date('d/m/Y H:i', strtotime($item['fecha_ingreso']))) ?></small>
+                        </td>
+                        <td><?= e(date('d/m/Y H:i', strtotime($item['fecha_alta']))) ?></td>
+                        <td><a class="text-link" href="dashboard.php?page=historico&amp;ingreso=<?= e($item['id_ingreso']) ?><?= $search !== '' ? '&amp;q=' . rawurlencode($search) : '' ?>#detalle-ingreso">Ver detalle ↓</a></td>
+                    </tr>
+                <?php endforeach; ?>
+
+                <?php if (!$history): ?>
+                    <tr>
+                        <td colspan="4" class="empty-cell"><?= $search !== '' ? 'No se encontraron ingresos con ese criterio.' : 'Todavía no hay ingresos archivados. El alta se realiza desde Ingresos y camas.' ?></td>
+                    </tr>
+                <?php endif; ?>
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<?php if ($selectedAdmission > 0 && !$selected): ?>
     <div class="alert error">No se encontró ese ingreso en el archivo histórico.</div>
 <?php endif; ?>

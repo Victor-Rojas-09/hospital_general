@@ -69,12 +69,19 @@ if ($canEdit && get_value('editar') !== '') {
     $editPatient = $stmt->fetch() ?: null;
 }
 $search = get_value('q');
+$patientStatus = "CASE
+    WHEN EXISTS (SELECT 1 FROM ingresos i WHERE i.id_paciente = p.id_paciente) THEN 'activo'
+    WHEN EXISTS (SELECT 1 FROM historico_ingresos hi WHERE hi.id_paciente = p.id_paciente) THEN 'historico'
+    ELSE 'sin_ingreso'
+END AS estado_hospitalario";
+
 if ($search !== '') {
     $stmt = $pdo->prepare(
-        'SELECT * FROM pacientes
-          WHERE nombre LIKE :name OR apellidos LIKE :surname
-             OR nss_hash = :nss_hash OR dni_hash = :dni_hash
-          ORDER BY apellidos, nombre'
+        'SELECT p.*, ' . $patientStatus . '
+           FROM pacientes p
+          WHERE p.nombre LIKE :name OR p.apellidos LIKE :surname
+             OR p.nss_hash = :nss_hash OR p.dni_hash = :dni_hash
+          ORDER BY p.apellidos, p.nombre'
     );
     $stmt->execute([
         'name' => '%' . $search . '%',
@@ -84,13 +91,15 @@ if ($search !== '') {
     ]);
     $patients = $stmt->fetchAll();
 } else {
-    $patients = $pdo->query('SELECT * FROM pacientes ORDER BY apellidos, nombre')->fetchAll();
+    $patients = $pdo->query(
+        'SELECT p.*, ' . $patientStatus . ' FROM pacientes p ORDER BY p.apellidos, p.nombre'
+    )->fetchAll();
 }
 ?>
 <div class="page-intro">
     <div>
         <h2>Pacientes registrados</h2>
-        <p class="muted">Información personal y consulta de pacientes del hospital.</p>
+        <p class="muted">Información personal y consulta de todos los pacientes del hospital.</p>
     </div>
     <span class="count-pill"><?= count($patients) ?> registros</span>
 </div>
@@ -147,7 +156,7 @@ if ($search !== '') {
         <div class="panel-heading">
             <div>
                 <h3>Listado de pacientes</h3>
-                <p class="muted">Busca por nombre, apellidos, NSS o DNI exacto.</p>
+                <p class="muted">Busca por nombre, apellidos, NSS o DNI exacto. El estado indica si tiene un ingreso vigente o antecedentes archivados.</p>
             </div>
         </div>
 
@@ -165,6 +174,7 @@ if ($search !== '') {
                 <thead>
                     <tr>
                         <th>Paciente</th>
+                        <th>Estado</th>
                         <th>Fecha nacimiento</th>
                         <?php if (has_role(['administrador', 'recepcion'])): ?>
                             <th>NSS</th>
@@ -182,6 +192,15 @@ if ($search !== '') {
                                 <strong><?= e($patient['nombre'] . ' ' . $patient['apellidos']) ?></strong>
                                 <small>ID <?= e($patient['id_paciente']) ?></small>
                             </td>
+                            <td>
+                                <?php if ($patient['estado_hospitalario'] === 'activo'): ?>
+                                    <span class="tag success">Activo</span>
+                                <?php elseif ($patient['estado_hospitalario'] === 'historico'): ?>
+                                    <span class="tag warning">Histórico</span>
+                                <?php else: ?>
+                                    <span class="tag muted-tag">Sin ingreso</span>
+                                <?php endif; ?>
+                            </td>
                             <td><?= e(date('d/m/Y', strtotime($patient['fecha_nacimiento']))) ?></td>
                             <?php if (has_role(['administrador', 'recepcion'])): ?>
                                 <td><?= e(decrypt_sensitive($patient['nss_cifrado'])) ?></td>
@@ -197,7 +216,7 @@ if ($search !== '') {
 
                     <?php if (!$patients): ?>
                         <tr>
-                            <td colspan="6" class="empty-cell">No se encontraron pacientes.</td>
+                            <td colspan="<?= 3 + (has_role(['administrador', 'recepcion']) ? 2 : 0) + ($canEdit ? 1 : 0) ?>" class="empty-cell">No se encontraron pacientes.</td>
                         </tr>
                     <?php endif; ?>
                 </tbody>

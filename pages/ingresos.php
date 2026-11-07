@@ -76,9 +76,12 @@ if (is_post()) {
             }
 
             $pdo->beginTransaction();
-            $admissionLock = $pdo->prepare('SELECT id_ingreso FROM ingresos WHERE id_ingreso = ? FOR UPDATE');
+            $admissionLock = $pdo->prepare(
+                'SELECT id_ingreso, fecha_ingreso FROM ingresos WHERE id_ingreso = ? FOR UPDATE'
+            );
             $admissionLock->execute([$admissionId]);
-            if (!$admissionLock->fetch()) {
+            $activeAdmission = $admissionLock->fetch();
+            if (!$activeAdmission) {
                 throw new RuntimeException('El ingreso ya no está activo.');
             }
 
@@ -103,14 +106,34 @@ if (is_post()) {
             );
             $current->execute([$admissionId]);
             $currentBed = $current->fetch();
+            $moveAt = normalize_datetime($moveLocal);
             if (!$currentBed) {
-                throw new RuntimeException('El ingreso no tiene una cama actual.');
+                if (strtotime($moveAt) < strtotime($activeAdmission['fecha_ingreso'])) {
+                    throw new RuntimeException('La fecha de asignación no puede ser anterior al ingreso hospitalario.');
+                }
+
+                $insertAssignment = $pdo->prepare(
+                    'INSERT INTO asignaciones_cama (id_ingreso, numero_planta, numero_cama, fecha_inicio)
+                     VALUES (?, ?, ?, ?)'
+                );
+                $insertAssignment->execute([$admissionId, $plant, $bed, $moveAt]);
+                $newAssignmentId = (int) $pdo->lastInsertId();
+
+                $insertOccupancy = $pdo->prepare(
+                    'INSERT INTO ocupaciones_cama (numero_planta, numero_cama, id_ingreso, id_asignacion)
+                     VALUES (?, ?, ?, ?)'
+                );
+                $insertOccupancy->execute([$plant, $bed, $admissionId, $newAssignmentId]);
+
+                $pdo->commit();
+                flash('success', 'Cama asignada correctamente al paciente activo.');
+                go('dashboard.php?page=ingresos');
             }
+
             if ((int) $currentBed['numero_planta'] === $plant && (int) $currentBed['numero_cama'] === $bed) {
                 throw new RuntimeException('El paciente ya está asignado a esa cama.');
             }
 
-            $moveAt = normalize_datetime($moveLocal);
             if (strtotime($moveAt) < strtotime($currentBed['fecha_inicio'])) {
                 throw new RuntimeException('La fecha del movimiento no puede ser anterior a la asignación actual.');
             }
@@ -184,9 +207,19 @@ if (is_post()) {
 }
 
 $patients = $pdo->query(
-    'SELECT p.id_paciente, p.nombre, p.apellidos
-       FROM pacientes p LEFT JOIN ingresos i ON i.id_paciente = p.id_paciente
-      WHERE i.id_ingreso IS NULL ORDER BY p.apellidos, p.nombre'
+    "SELECT p.id_paciente, p.nombre, p.apellidos
+     FROM pacientes p
+     WHERE NOT EXISTS (
+         SELECT 1
+         FROM ingresos i
+         WHERE i.id_paciente = p.id_paciente
+     )
+     AND NOT EXISTS (
+         SELECT 1
+         FROM historico_ingresos hi
+         WHERE hi.id_paciente = p.id_paciente
+     )
+     ORDER BY p.apellidos, p.nombre"
 )->fetchAll();
 $freeBeds = $pdo->query(
     'SELECT c.numero_planta, c.numero_cama, p.nombre AS planta_nombre
@@ -204,6 +237,36 @@ $activeAdmissions = $pdo->query(
        LEFT JOIN plantas pl ON pl.numero_planta = oc.numero_planta
       ORDER BY i.fecha_ingreso DESC'
 )->fetchAll();
+
+// Search only current admissions; archived stays are not eligible for bed changes.
+$activeSearch = get_value('buscar_activo');
+if ($activeSearch !== '') {
+    $stmt = $pdo->prepare(
+        'SELECT i.id_ingreso, i.fecha_ingreso, p.id_paciente, p.nombre, p.apellidos,
+                oc.numero_planta, oc.numero_cama, pl.nombre AS planta_nombre
+           FROM ingresos i
+           JOIN pacientes p ON p.id_paciente = i.id_paciente
+           LEFT JOIN ocupaciones_cama oc ON oc.id_ingreso = i.id_ingreso
+           LEFT JOIN plantas pl ON pl.numero_planta = oc.numero_planta
+          WHERE p.nombre LIKE :name
+             OR p.apellidos LIKE :surname
+             OR CONCAT(p.nombre, CHAR(32), p.apellidos) LIKE :full_name
+             OR CAST(i.id_ingreso AS CHAR) = :admission_id
+             OR CAST(p.id_paciente AS CHAR) = :patient_id
+          ORDER BY i.fecha_ingreso DESC'
+    );
+    $stmt->execute([
+        'name' => '%' . $activeSearch . '%',
+        'surname' => '%' . $activeSearch . '%',
+        'full_name' => '%' . $activeSearch . '%',
+        'admission_id' => $activeSearch,
+        'patient_id' => $activeSearch,
+    ]);
+    $matchingAdmissions = $stmt->fetchAll();
+} else {
+    $matchingAdmissions = $activeAdmissions;
+}
+
 $plants = $pdo->query('SELECT numero_planta, nombre FROM plantas ORDER BY numero_planta')->fetchAll();
 ?>
 
@@ -251,7 +314,7 @@ $plants = $pdo->query('SELECT numero_planta, nombre FROM plantas ORDER BY numero
             </label>
             <button class="button primary" type="submit" <?= (!$patients || !$freeBeds) ? 'disabled' : '' ?>>Registrar ingreso</button>
             <?php if (!$patients): ?>
-                <small class="help-text">Primero registra un paciente sin ingreso activo.</small>
+                <small class="help-text">Primero registra un paciente que no tenga un ingreso activo.</small>
             <?php endif; ?>
             <?php if (!$freeBeds): ?>
                 <small class="help-text">No hay camas disponibles. Registra una planta o libera una cama.</small>
@@ -262,21 +325,34 @@ $plants = $pdo->query('SELECT numero_planta, nombre FROM plantas ORDER BY numero
     <section class="panel form-panel">
         <div class="panel-heading">
             <div>
-                <h3>Cambio de cama</h3>
-                <p class="muted">Se cierra la asignación anterior sin eliminarla.</p>
+                <h3>Asignación de cama</h3>
+                <p class="muted">Busca un paciente hospitalizado para asignarle una cama o registrar un traslado. Solo aparecen ingresos activos.</p>
             </div>
         </div>
+        <form method="get" class="search-form" role="search">
+            <input type="hidden" name="page" value="ingresos">
+            <input type="search" name="buscar_activo" aria-label="Buscar paciente activo" placeholder="Nombre, apellidos o ID" value="<?= e($activeSearch) ?>">
+            <button class="button secondary" type="submit">Buscar</button>
+            <?php if ($activeSearch !== ''): ?>
+                <a class="text-link" href="dashboard.php?page=ingresos">Limpiar</a>
+            <?php endif; ?>
+        </form>
         <form method="post" class="form-stack">
             <?= csrf_field() ?>
             <input type="hidden" name="action" value="move">
-            <label>Ingreso activo
+            <label>Paciente activo
                 <select name="id_ingreso" required>
                     <option value="">Selecciona un ingreso</option>
-                    <?php foreach ($activeAdmissions as $admission): ?>
+                    <?php foreach ($matchingAdmissions as $admission): ?>
                         <option value="<?= e($admission['id_ingreso']) ?>"><?= e($admission['nombre'] . ' ' . $admission['apellidos'] . ' · Ingreso #' . $admission['id_ingreso']) ?></option>
                     <?php endforeach; ?>
                 </select>
             </label>
+            <?php if ($activeSearch !== '' && !$matchingAdmissions): ?>
+                <small class="help-text">No se encontraron pacientes activos con ese criterio de búsqueda.</small>
+            <?php elseif (!$matchingAdmissions): ?>
+                <small class="help-text">No hay ingresos activos para asignar o cambiar de cama.</small>
+            <?php endif; ?>
             <label>Nueva cama disponible
                 <select name="cama_compuesta" id="move-bed-select" required>
                     <option value="">Selecciona planta y cama</option>
@@ -285,10 +361,10 @@ $plants = $pdo->query('SELECT numero_planta, nombre FROM plantas ORDER BY numero
                     <?php endforeach; ?>
                 </select>
             </label>
-            <label>Fecha y hora del movimiento
+            <label>Fecha y hora de asignación / movimiento
                 <input type="datetime-local" name="fecha_movimiento" value="<?= date('Y-m-d\TH:i') ?>" required>
             </label>
-            <button class="button secondary" type="submit" <?= (!$activeAdmissions || !$freeBeds) ? 'disabled' : '' ?>>Registrar cambio</button>
+            <button class="button secondary" type="submit" <?= (!$matchingAdmissions || !$freeBeds) ? 'disabled' : '' ?>>Asignar / cambiar cama</button>
         </form>
     </section>
 </div>
